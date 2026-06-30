@@ -42,6 +42,12 @@ interface ExpenseDao {
     fun observeInRange(userId: String, startDay: Long, endDay: Long): Flow<List<ExpenseEntity>>
 
     @Query(
+        "SELECT * FROM expenses WHERE ownerUserId = :userId AND isDeleted = 0 " +
+            "AND date BETWEEN :startDay AND :endDay ORDER BY date ASC"
+    )
+    suspend fun getInRange(userId: String, startDay: Long, endDay: Long): List<ExpenseEntity>
+
+    @Query(
         "SELECT COALESCE(SUM(amountCents),0) FROM expenses WHERE ownerUserId = :userId " +
             "AND isDeleted = 0 AND date BETWEEN :startDay AND :endDay"
     )

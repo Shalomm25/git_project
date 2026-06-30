@@ -1,6 +1,5 @@
 package com.ledgerly.expense.ui.expenses
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
@@ -19,6 +18,8 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -26,6 +27,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,8 +59,8 @@ fun ExpenseEntryScreen(
     val paymentMethods by viewModel.paymentMethods.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var pendingCameraPath by remember { mutableStateOf<String?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture(),
@@ -68,6 +71,27 @@ fun ExpenseEntryScreen(
         ActivityResultContracts.GetContent(),
     ) { uri ->
         if (uri != null) viewModel.setReceipt(ReceiptCapture.importFrom(context, uri))
+    }
+
+    if (showDatePicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = form.date
+                .atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { millis ->
+                        val picked = java.time.Instant.ofEpochMilli(millis)
+                            .atZone(java.time.ZoneOffset.UTC).toLocalDate()
+                        viewModel.update { it.copy(date = picked) }
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } },
+        ) { DatePicker(state = pickerState) }
     }
 
     Column(
@@ -101,7 +125,7 @@ fun ExpenseEntryScreen(
         )
 
         AssistChip(
-            onClick = { /* A real DatePickerDialog is wired here. */ },
+            onClick = { showDatePicker = true },
             label = { Text(DateUtils.formatDisplay(form.date)) },
             leadingIcon = { Icon(Icons.Outlined.CalendarMonth, contentDescription = null) },
         )
@@ -177,7 +201,6 @@ fun ExpenseEntryScreen(
                 onClick = {
                     val (file, uri) = ReceiptCapture.newReceiptUri(context)
                     pendingCameraPath = file.absolutePath
-                    pendingCameraUri = uri
                     cameraLauncher.launch(uri)
                 },
             ) {

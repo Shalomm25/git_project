@@ -1,24 +1,36 @@
 package com.ledgerly.expense.ui.reports
 
+import android.content.Intent
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ledgerly.expense.core.util.Money
+import com.ledgerly.expense.domain.model.ExportFormat
 
 /**
  * Tax-ready Schedule C summary. Each row is an IRS line with its total; the
@@ -28,6 +40,14 @@ import com.ledgerly.expense.core.util.Money
 @Composable
 fun ReportsScreen(viewModel: ReportsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    // Launch the system share sheet whenever an export finishes.
+    LaunchedEffect(Unit) {
+        viewModel.shareEvents.collect { intent ->
+            context.startActivity(Intent.createChooser(intent, "Share report"))
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -90,12 +110,38 @@ fun ReportsScreen(viewModel: ReportsViewModel = hiltViewModel()) {
             }
 
             item {
-                Text(
-                    "Export: PDF · CSV · Excel · Google Sheets",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+                Text("Export", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val formats = listOf(
+                        "PDF" to ExportFormat.PDF,
+                        "CSV" to ExportFormat.CSV,
+                        "Excel" to ExportFormat.EXCEL,
+                    )
+                    formats.forEach { (label, format) ->
+                        AssistChip(
+                            onClick = { viewModel.export(format) },
+                            enabled = !state.isExporting,
+                            label = { Text(label) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Outlined.FileDownload,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(AssistChipDefaults.IconSize),
+                                )
+                            },
+                        )
+                    }
+                }
+                if (state.exportError != null) {
+                    Text(
+                        "Export failed: ${state.exportError}",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         }
     }
