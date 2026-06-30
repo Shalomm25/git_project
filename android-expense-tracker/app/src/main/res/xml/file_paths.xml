@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Receipt images captured/cropped by the app -->
+    <files-path name="receipts" path="receipts/" />
+    <cache-path name="receipt_cache" path="receipts/" />
+    <!-- Exported reports (PDF/CSV/XLSX) shared via the system sheet -->
+    <files-path name="exports" path="exports/" />
+    <external-files-path name="external_exports" path="exports/" />
+</paths>
